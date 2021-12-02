@@ -34,7 +34,6 @@ parser.add_argument('--num_classes', type=int, default=10, help='number of targe
 parser.add_argument('--max_lr', type=float, default=0.1, help='maximum learning rate')
 parser.add_argument('--mixup_alpha', type=float, default=0.4, help='parameter setting for mixup augmentation')
 
-
 parser.add_argument('--trans_way', type=str, default='tsl', help='knowledge transfer way, \
                         should be one of [onehot, tsl, nle, fitnets, at, ab, vid, fsp, cofd, sp, cckd, pkt, nst, rkd, vbkt]')
 parser.add_argument('--lmd', type=float, default=0.0, help='loss weight of the basic CE loss')
@@ -61,9 +60,9 @@ np.random.seed(opt.seed)
 random.seed(opt.seed)
 
 
-train_csv = 'evaluation/evaluation_setup/fold1_train_' + opt.device + '.csv'
-train_paired_csv = 'evaluation/evaluation_setup/fold1_train_' + opt.device + '_paired_a.csv'
-val_csv = 'evaluation/evaluation_setup/fold1_evaluate_' + opt.device + '.csv'
+train_csv = 'toos/evaluation_setup/fold1_train_' + opt.device + '.csv'
+train_paired_csv = 'tools/evaluation_setup/fold1_train_' + opt.device + '_paired_a.csv'
+val_csv = 'tools/evaluation_setup/fold1_evaluate_' + opt.device + '.csv'
 
 feat_path = opt.feat_path
 source_model = opt.source_model
