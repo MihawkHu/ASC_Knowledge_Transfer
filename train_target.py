@@ -11,9 +11,7 @@ from scipy.special import softmax
 import argparse
 import random
 from kt_losses import *
-from utils.utils import *
-from utils.funcs import *
-from utils.DCASE_training_functions import *
+from utils import *
 from models import *
 
 
@@ -60,7 +58,7 @@ np.random.seed(opt.seed)
 random.seed(opt.seed)
 
 
-train_csv = 'toos/evaluation_setup/fold1_train_' + opt.device + '.csv'
+train_csv = 'tools/evaluation_setup/fold1_train_' + opt.device + '.csv'
 train_paired_csv = 'tools/evaluation_setup/fold1_train_' + opt.device + '_paired_a.csv'
 val_csv = 'tools/evaluation_setup/fold1_evaluate_' + opt.device + '.csv'
 
@@ -125,7 +123,7 @@ ori_model.layers.pop()
 x = keras.layers.Lambda(div_tem, name='lambda_T')(ori_model.layers[-1].output)
 o_ce = keras.layers.Activation(keras.activations.softmax, name='output_ce')(ori_model.layers[-1].output)
 o_ts = keras.layers.Activation(keras.activations.softmax, name='output_ts')(x)
-if trans_way == 'tsl':
+if trans_way in ['tsl', 'onehot']:
     model_outputs = [o_ce, o_ts]
 elif trans_way == 'nle':
     o_kt = keras.layers.Activation(keras.activations.softmax, name='output_kt')(x)
@@ -170,7 +168,7 @@ teacher_ori_model.layers.pop()
 x = keras.layers.Lambda(div_tem, name='lambda_T')(teacher_ori_model.layers[-1].output)
 o_ce = keras.layers.Activation(keras.activations.softmax, name='output_ce')(teacher_ori_model.layers[-1].output)
 o_ts = keras.layers.Activation(keras.activations.softmax, name='output_ts')(x)
-if trans_way == 'tsl':
+if trans_way in ['tsl', 'onehot']:
     teacher_model_outputs = [o_ce, o_ts]
 elif trans_way == 'nle':
     o_kt = keras.layers.Activation(keras.activations.softmax, name='output_kt')(x)
@@ -256,7 +254,7 @@ if trans_way in ['ab', 'fsp']:
                               ) 
 
 # training stage
-if trans_way == 'tsl':
+if trans_way in ['tsl', 'onehot']:
     kt_loss = 'categorical_crossentropy'
 elif trans_way == 'nle':
     kt_loss = 'categorical_crossentropy'
@@ -289,7 +287,7 @@ elif trans_way == 'vbkt':
     kt_loss = vbkt_loss
 
 
-if trans_way == 'tsl':
+if trans_way in ['tsl', 'onehot']:
     model_loss = {'output_ce': 'categorical_crossentropy', 'output_ts': kt_loss}
     loss_weights = {'output_ce': lmd, 'output_ts': soft_ratio}
 elif trans_way == 'nle':
@@ -328,7 +326,7 @@ lr_scheduler = LR_WarmRestart(nbatch=np.ceil(sample_num/batch_size), Tmult=2,
 
 callbacks = [lr_scheduler]
 
-if trans_way == 'tsl':
+if trans_way in ['tsl', 'onehot']:
     train_data_generator = Generator_tslearning_splitted(feat_path, train_csv, train_paired_csv, teacher_model, num_freq_bin,
                               batch_size=batch_size, alpha=mixup_alpha, splitted_num=4)()
 elif trans_way == 'nle':
@@ -345,7 +343,7 @@ elif trans_way == 'vbkt':
                               batch_size=batch_size, alpha=mixup_alpha, splitted_num=4)()
 
 
-if trans_way == 'tsl':
+if trans_way in ['tsl', 'onehot']:
     validation_data = (data_val, [y_val, y_val_soft])
 elif trans_way in ['fitnets', 'nle', 'sp', 'cckd', 'pkt', 'nst', 'rkd']:
     validation_data = (data_val, [y_val, y_val_soft, y_val_kt])
