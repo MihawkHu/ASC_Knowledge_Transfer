@@ -26,11 +26,11 @@ parser.add_argument('--model', type=str, default='resnet')
 parser.add_argument('--source_model', type=str, default="../ASC_Adaptation/exp_2020_resnet_baseline_source//model-62-0.7909.hdf5")
 parser.add_argument('--experiments', type=str, default='exp/')
 
-parser.add_argument('--num_audio_channels',type=int, default=1)
-parser.add_argument('--num_freq_bin',type=int, default=128)
-parser.add_argument('--num_classes',type=int, default=10)
-parser.add_argument('--max_lr',type=float, default=0.1)
-parser.add_argument('--mixup_alpha',type=float, default=0.4)
+parser.add_argument('--num_audio_channels', type=int, default=1)
+parser.add_argument('--num_freq_bin', type=int, default=128)
+parser.add_argument('--num_classes', type=int, default=10)
+parser.add_argument('--max_lr', type=float, default=0.1)
+parser.add_argument('--mixup_alpha', type=float, default=0.4)
 
 
 parser.add_argument('--trans_way', type=str, default='tsl')
@@ -38,12 +38,14 @@ parser.add_argument('--lmd', type=float, default=0.0)
 parser.add_argument('--soft_ratio', type=float, default=1.0)
 parser.add_argument('--temperature', type=float, default=1.0)
 parser.add_argument('--alpha', type=float, default=1.0)
+parser.add_argument('--beta', type=float, default=2.0)
 parser.add_argument('--nle_path', type=str, default="tools/nle.txt")
+parser.add_argument('--cckd_emb_size', type=int, default=128)
 parser.add_argument('--latent_layer', type=str, default='activation_33')
 parser.add_argument('--latent_layers', nargs='+', default=['activation_9', 'activation_10', 'activation_21', 'activation_22', 'activation_33'])
 parser.add_argument('--batch_size', type=int, default=32)
 parser.add_argument('--num_epochs', type=int, default=62)
-parser.add_argument('--num_epochs_pretrain', type=int, default=62)
+parser.add_argument('--num_epochs_pretrain', type=int, default=30)
 opt = parser.parse_args()
 print(opt)
 
@@ -80,10 +82,11 @@ lmd = opt.lmd
 tem = opt.temperature
 soft_ratio = opt.soft_ratio
 alpha = opt.alpha
+beta = opt.beta
 nle_path = opt.nle_path
+cckd_emb_size = opt.cckd_emb_size
 latent_layer = opt.latent_layer
 latent_layers = opt.latent_layers
-
 
 
 data_val, y_val = load_data_2020(feat_path, val_csv, num_freq_bin, 'logmel')
@@ -99,7 +102,7 @@ def div_tem(x):
     x = x / tem
     return x
 
-# modify model to add temperature parameter
+# modify model to add temperature parameter and kt output
 ori_model = keras.models.load_model(source_model)
 ori_model.layers.pop()
 x = keras.layers.Lambda(div_tem, name='lambda_T')(ori_model.layers[-1].output)
@@ -110,16 +113,35 @@ if trans_way == 'tsl':
 elif trans_way == 'nle':
     o_kt = keras.layers.Activation(keras.activations.softmax, name='output_kt')(x)
     model_outputs = [o_ce, o_ts, o_kt]
-elif trans_way == 'fitnets':
+elif trans_way in ['fitnets', 'sp', 'cckd', 'pkt', 'nst', 'rkd']:
     o_kt = ori_model.get_layer(latent_layer).output
+    if trans_way == 'cckd':
+        o_kt = keras.layers.Dense(cckd_emb_size, name='output_cckd')(o_kt)
     model_outputs = [o_ce, o_ts, o_kt]
-elif trans_way in ['at', 'ab']:
+elif trans_way in ['at', 'ab', 'vid', 'cofd']:
     model_outputs = [o_ce, o_ts]
     for i in range(len(latent_layers)):
         model_outputs.append(ori_model.get_layer(latent_layers[i]).output)
+elif trans_way == 'fsp':
+    model_outputs = [o_ce, o_ts]
+    if opt.model == 'resnet':
+    # our resnet model is two-path resnet, we need to split handle two path
+        for i in range(len(latent_layers) - 1):
+            s_pos = i
+            e_pos = i + 2
+            if i == len(latent_layers) - 2:
+                e_pos = i + 1
+            o_temp1 = ori_model.get_layer(latent_layers[s_pos]).output
+            o_temp2 = ori_model.get_layer(latent_layers[e_pos]).output
+            model_outputs.append(keras.layers.Lambda(gram_fsp_resnet, name=('lambda_fsp'+str(i)))([o_temp1, o_temp2]))
+    elif opt.model == 'fcnn':
+        for i in range(len(latent_layers) - 1):
+            o_temp1 = ori_model.get_layer(latent_layers[i]).output
+            o_temp2 = ori_model.get_layer(latent_layers[i+1]).output
+            model_outputs.append(keras.layers.Lambda(gram_fsp_fcnn, name=('lambda_fsp'+str(i)))([o_temp1, o_temp2]))
 model = keras.Model(inputs=ori_model.inputs, outputs=model_outputs)
 
-
+# modify the source model as well
 teacher_ori_model = keras.models.load_model(source_model)
 teacher_ori_model.layers.pop()
 x = keras.layers.Lambda(div_tem, name='lambda_T')(teacher_ori_model.layers[-1].output)
@@ -130,22 +152,40 @@ if trans_way == 'tsl':
 elif trans_way == 'nle':
     o_kt = keras.layers.Activation(keras.activations.softmax, name='output_kt')(x)
     teacher_model_outputs = [o_ce, o_ts, o_kt]
-elif trans_way == 'fitnets':
+elif trans_way in ['fitnets', 'sp', 'cckd', 'pkt', 'nst', 'rkd']:
     o_kt = teacher_ori_model.get_layer(latent_layer).output
+    if trans_way == 'cckd':
+        o_kt = keras.layers.Dense(cckd_emb_size, name='output_cckd')(o_kt)
     teacher_model_outputs = [o_ce, o_ts, o_kt]
-elif trans_way in ['at', 'ab']:
+elif trans_way in ['at', 'ab', 'vid', 'cofd']:
     teacher_model_outputs = [o_ce, o_ts]
     for i in range(len(latent_layers)):
         teacher_model_outputs.append(teacher_ori_model.get_layer(latent_layers[i]).output)
+elif trans_way == 'fsp':
+    teacher_model_outputs = [o_ce, o_ts]
+    if opt.model == 'resnet':
+        for i in range(len(latent_layers) - 1):
+            s_pos = i
+            e_pos = i + 2
+            if i == len(latent_layers) - 2:
+                e_pos = i + 1
+            o_temp1 = teacher_ori_model.get_layer(latent_layers[s_pos]).output
+            o_temp2 = teacher_ori_model.get_layer(latent_layers[e_pos]).output
+            teacher_model_outputs.append(keras.layers.Lambda(gram_fsp_resnet, name=('lambda_fsp'+str(i)))([o_temp1, o_temp2]))
+    elif opt.model == 'fcnn':
+        for i in range(len(latent_layers) - 1):
+            o_temp1 = teacher_ori_model.get_layer(latent_layers[i]).output
+            o_temp2 = teacher_ori_model.get_layer(latent_layers[i+1]).output
+            teacher_model_outputs.append(keras.layers.Lambda(gram_fsp_fcnn, name=('lambda_fsp'+str(i)))([o_temp1, o_temp2]))
 teacher_model = keras.Model(inputs=teacher_ori_model.inputs, outputs=teacher_model_outputs)
 teacher_model._make_predict_function()
 
 y_val_soft = teacher_model.predict(data_val)[1]
 if trans_way == 'nle':
     y_val_kt = y_val.dot(nle_mat)
-elif trans_way == 'fitnets':
+elif trans_way in ['fitnets', 'sp', 'cckd', 'pkt', 'nst', 'rkd']:
     y_val_kt = teacher_model.predict(data_val)[2]
-elif trans_way in ['at', 'ab']:
+elif trans_way in ['at', 'ab', 'vid', 'fsp', 'cofd']:
     y_val_kt = teacher_model.predict(data_val)[2:]
 
 
@@ -154,9 +194,14 @@ elif trans_way in ['at', 'ab']:
 if trans_way in ['ab', 'fsp']:
     model_loss_pretrain = {'output_ce': 'categorical_crossentropy', 'output_ts': 'categorical_crossentropy'}
     loss_weights_pretrain = {'output_ce': 0.0, 'output_ts': 0.0}
-    for i in range(len(latent_layers)):
-        model_loss_pretrain[latent_layers[i]] = ab_loss
-        loss_weights_pretrain[latent_layers[i]] = 1.0 / len(latent_layers)
+    if trans_way == 'ab':
+        for i in range(len(latent_layers)):
+            model_loss_pretrain[latent_layers[i]] = ab_loss
+            loss_weights_pretrain[latent_layers[i]] = 1.0 / len(latent_layers)
+    elif trans_way == 'fsp':
+        for i in range(len(latent_layers) - 1):
+            model_loss_pretrain['lambda_fsp'+str(i)] = 'mean_squared_error'
+            loss_weights_pretrain['lambda_fsp'+str(i)] = 1.0 / len(latent_layers)
 
     model.compile(loss=model_loss_pretrain, loss_weights=loss_weights_pretrain, metrics={'output_ce': ['accuracy']},
               optimizer=SGD(lr=max_lr,decay=0, momentum=0.9, nesterov=False))
@@ -182,27 +227,61 @@ if trans_way in ['ab', 'fsp']:
                               ) 
 
 # training stage
-if trans_way == 'at':
+if trans_way == 'tsl':
+    kt_loss = 'categorical_crossentropy'
+elif trans_way == 'nle':
+    kt_loss = 'categorical_crossentropy'
+elif trans_way == 'fitnets':
+    kt_loss = 'mean_squared_error'
+elif trans_way == 'at':
     kt_loss = at_loss
 elif trans_way == 'ab':
     kt_loss = ab_loss
+elif trans_way == 'vid':
+    kt_loss = vid_loss
+elif trans_way == 'fsp':
+    kt_loss = 'mean_squared_error'
+elif trans_way == 'cofd':
+    kt_loss = cofd_loss
+elif trans_way == 'sp':
+    kt_loss = sp_loss
+elif trans_way == 'cckd':
+    kt_loss = cckd_loss
+elif trans_way == 'pkt':
+    kt_loss = pkt_loss
+elif trans_way == 'nst':
+    kt_loss = nst_loss
+elif trans_way == 'rkd':
+    def rkd_loss(target, inputs):
+        loss = alpha * biloss(inputs, target) + beta * triloss(inputs, target)
+        return loss
+    kt_loss = rkd_loss
 
 
 if trans_way == 'tsl':
-    model_loss = {'output_ce': 'categorical_crossentropy', 'output_ts': 'categorical_crossentropy'}
+    model_loss = {'output_ce': 'categorical_crossentropy', 'output_ts': kt_loss}
     loss_weights = {'output_ce': lmd, 'output_ts': soft_ratio}
 elif trans_way == 'nle':
-    model_loss = {'output_ce': 'categorical_crossentropy', 'output_ts': 'categorical_crossentropy', 'output_kt': 'categorical_crossentropy'}
+    model_loss = {'output_ce': 'categorical_crossentropy', 'output_ts': 'categorical_crossentropy', 'output_kt': kt_loss}
     loss_weights = {'output_ce': lmd, 'output_ts': soft_ratio, 'output_kt':alpha}
-elif trans_way == 'fitnets':
-    model_loss = {'output_ce': 'categorical_crossentropy', 'output_ts': 'categorical_crossentropy', latent_layer: 'mean_squared_error'}
+elif trans_way in ['fitnets', 'sp', 'pkt', 'nst', 'rkd']:
+    model_loss = {'output_ce': 'categorical_crossentropy', 'output_ts': 'categorical_crossentropy', latent_layer: kt_loss}
     loss_weights = {'output_ce': lmd, 'output_ts': soft_ratio, latent_layer: alpha}
-elif trans_way in ['at', 'ab']:
+elif trans_way == 'cckd':
+    model_loss = {'output_ce': 'categorical_crossentropy', 'output_ts': 'categorical_crossentropy', 'output_cckd': kt_loss}
+    loss_weights = {'output_ce': lmd, 'output_ts': soft_ratio, 'output_cckd': alpha}
+elif trans_way in ['at', 'ab', 'vid', 'cofd']:
     model_loss = {'output_ce': 'categorical_crossentropy', 'output_ts': 'categorical_crossentropy'}
     loss_weights = {'output_ce': lmd, 'output_ts': soft_ratio}
     for i in range(len(latent_layers)):
         model_loss[latent_layers[i]] = kt_loss
         loss_weights[latent_layers[i]] = alpha / len(latent_layers)
+elif trans_way == 'fsp':
+    model_loss = {'output_ce': 'categorical_crossentropy', 'output_ts': 'categorical_crossentropy'}
+    loss_weights = {'output_ce': lmd, 'output_ts': soft_ratio}
+    for i in range(len(latent_layers) - 1):
+        model_loss['lambda_fsp'+str(i)] = kt_loss
+        loss_weights['lambda_fsp'+str(i)] = 1.0 / len(latent_layers)
 
 
 model.compile(loss=model_loss, loss_weights=loss_weights, metrics={'output_ce': ['accuracy']},  
@@ -221,20 +300,21 @@ if trans_way == 'tsl':
 elif trans_way == 'nle':
     train_data_generator = Generator_nle_splitted(feat_path, train_csv, train_paired_csv, teacher_model, nle_mat, num_freq_bin,
                               batch_size=batch_size, alpha=mixup_alpha, splitted_num=4)()
-elif trans_way == 'fitnets':
+elif trans_way in ['fitnets', 'sp', 'cckd', 'pkt', 'nst', 'rkd']:
     train_data_generator = Generator_kt_singlelayer_splitted(feat_path, train_csv, train_paired_csv, teacher_model, num_freq_bin, 
                               batch_size=batch_size, alpha=mixup_alpha, splitted_num=4)()
-elif trans_way in ['at', 'ab']:
+elif trans_way in ['at', 'ab', 'vid', 'fsp', 'cofd']:
     train_data_generator = Generator_kt_multilayer_splitted(feat_path, train_csv, train_paired_csv, teacher_model, num_freq_bin,
                               batch_size=batch_size, alpha=mixup_alpha, splitted_num=4)()
 
 
 if trans_way == 'tsl':
     validation_data = (data_val, [y_val, y_val_soft])
-elif trans_way in ['fitnets', 'nle']:
+elif trans_way in ['fitnets', 'nle', 'sp', 'cckd', 'pkt', 'nst', 'rkd']:
     validation_data = (data_val, [y_val, y_val_soft, y_val_kt])
-elif trans_way in ['at', 'ab']:
+elif trans_way in ['at', 'ab', 'vid', 'fsp', 'cofd']:
     validation_data = (data_val, [y_val, y_val_soft] + y_val_kt)
+
 
 history = model.fit_generator(train_data_generator,
                               validation_data=validation_data,

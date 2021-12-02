@@ -98,8 +98,7 @@ class Generator_splitted():
                     
                     itr_num = int(cur_item_num // (self.batch_size * 2))
                     for i in range(itr_num):
-                        #batch_ids = indexes[i * self.batch_size * 2:(i + 1) * self.batch_size * 2]
-                        batch_ids = np.arange(cur_item_num)[i*self.batch_size * 2:(i + 1) * self.batch_size * 2]
+                        batch_ids = np.arange(cur_item_num)[i * self.batch_size * 2 : (i + 1) * self.batch_size * 2]
                         X, y = self.__data_generation(batch_ids, X_train, y_train)
                         
                         yield X, y
@@ -203,7 +202,7 @@ class Generator_tslearning_splitted():
                     
                     itr_num = int(cur_item_num // (self.batch_size * 2))
                     for i in range(itr_num):
-                        batch_ids = np.arange(cur_item_num)[i*self.batch_size * 2:(i + 1) * self.batch_size * 2]
+                        batch_ids = np.arange(cur_item_num)[i * self.batch_size * 2 : (i + 1) * self.batch_size * 2]
                         X, y, y_s = self.__data_generation_aug(batch_ids, X_train, y_train, y_train_soft_withT)
                         yield X, [y, y_s]
 
@@ -311,7 +310,7 @@ class Generator_nle_splitted():
                     
                     itr_num = int(cur_item_num // (self.batch_size * 2))
                     for i in range(itr_num):
-                        batch_ids = np.arange(cur_item_num)[i*self.batch_size * 2:(i + 1) * self.batch_size *2]
+                        batch_ids = np.arange(cur_item_num)[i * self.batch_size * 2 : (i + 1) * self.batch_size * 2]
                         X, y, y_s, y_n = self.__data_generation_aug(batch_ids, X_train, y_train, y_train_soft_withT, y_train_nle)
                         yield X, [y, y_s, y_n]
 
@@ -554,7 +553,7 @@ class Generator_kt_multilayer_splitted():
  
                     itr_num = int(cur_item_num // (self.batch_size * 2))
                     for i in range(itr_num):
-                        batch_ids = np.arange(cur_item_num)[i*self.batch_size * 2:(i + 1) * self.batch_size *2]
+                        batch_ids = np.arange(cur_item_num)[i * self.batch_size * 2 : (i + 1) * self.batch_size * 2]
                         X, y, y_s, y_a = self.__data_generation_aug(batch_ids, X_train, y_train, y_train_soft_withT, y_train_att)
                         yield X, [y, y_s] + y_a
 
@@ -573,7 +572,9 @@ class Generator_kt_multilayer_splitted():
         l = np.random.beta(self.alpha, self.alpha, self.batch_size)
         X_l = l.reshape(self.batch_size, 1, 1, 1)
         y_l = l.reshape(self.batch_size, 1)
-        y_a_l = l.reshape(self.batch_size, 1, 1, 1)
+        y_a_l = l.reshape(self.batch_size, 1, 1)
+        if len(y_train_att[0].shape) > len(y_a_l.shape):
+            y_a_l = np.expand_dims(y_a_l, axis=-1)
 
         X1 = X_train[batch_ids[:self.batch_size]]
         X2 = X_train[batch_ids[self.batch_size:]]
