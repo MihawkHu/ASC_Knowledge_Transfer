@@ -628,4 +628,150 @@ class Generator_kt_multilayer_splitted():
 
 
         return X, y, y_s, y_a
+        
 
+class Generator_vbkt_splitted():
+    def __init__(self, feat_path, train_csv, train_paired_csv, teacher_model, sigma, feat_dim=128, batch_size=32, alpha=0.2, shuffle=True, splitted_num=4): 
+        self.feat_path = feat_path
+        self.train_csv = train_csv
+        self.feat_dim = feat_dim
+        self.batch_size = batch_size
+        self.alpha = alpha
+        self.shuffle = shuffle
+        self.sample_num = len(open(train_csv, 'r').readlines())-1
+        self.lock = threading.Lock()
+        self.splitted_num = splitted_num
+
+        self.train_paired_csv = train_paired_csv
+        self.teacher_model = teacher_model
+        self.sigma = sigma
+        
+    def __iter__(self):
+        return self
+    
+    @threadsafe_generator
+    def __call__(self):
+        with self.lock:
+            while True:
+                indexes = self.__get_exploration_order()
+
+                # split data and then load it to memory one by one
+                item_num = self.sample_num // self.splitted_num - (self.sample_num // self.splitted_num) % self.batch_size
+                for k in range(self.splitted_num):
+                    cur_item_num = item_num
+                    s = k * item_num
+                    e = (k+1) * item_num 
+                    if k == self.splitted_num - 1:
+                        cur_item_num = self.sample_num - (self.splitted_num - 1) * item_num
+                        e = self.sample_num
+
+                    lines = indexes[s:e]
+                    X_train, y_train = load_data_2020_splitted(self.feat_path, self.train_csv, self.feat_dim, lines, 'logmel')
+                    y_train = keras.utils.to_categorical(y_train, 10)
+
+                    X_train_paired, _ = load_data_2020_splitted(self.feat_path, self.train_paired_csv, self.feat_dim, lines, 'logmel')
+                    y_all = self.teacher_model.predict(X_train_paired)
+                    y_train_soft_withT = y_all[1]
+
+                    y_train_mu = y_all[2:]
+                    
+                    # generate log_sigma mat by input sigma value
+                    y_train_logsigma = []
+                    for y_mu in y_train_mu:
+                        y_sigma = np.ones(y_mu.shape) * self.sigma
+                        y_logsigma = np.log(y_sigma)
+                        y_train_logsigma.append(y_logsigma)
+
+ 
+                    itr_num = int(cur_item_num // (self.batch_size * 2))
+                    for i in range(itr_num):
+                        batch_ids = np.arange(cur_item_num)[i * self.batch_size * 2 : (i + 1) * self.batch_size * 2]
+                        X, y, y_s, y_m, y_l = self.__data_generation_aug(batch_ids, X_train, y_train, y_train_soft_withT, y_train_mu, y_train_logsigma)
+                        y_f = [np.concatenate([y_m_, y_l_], axis=1) for y_m_, y_l_ in zip(y_m, y_l)]
+                        yield [X] + y_l, [y, y_s] + y_f
+
+
+    def __get_exploration_order(self):
+        indexes = np.arange(self.sample_num)
+
+        if self.shuffle:
+            np.random.shuffle(indexes)
+
+        return indexes
+
+
+    def __data_generation_aug(self, batch_ids, X_train, y_train, y_train_soft, y_train_mu, y_train_logsigma):
+        _, h, w, c = X_train.shape
+        l = np.random.beta(self.alpha, self.alpha, self.batch_size)
+        X_l = l.reshape(self.batch_size, 1, 1, 1)
+        y_l = l.reshape(self.batch_size, 1)
+        y_m_l = l.reshape(self.batch_size, 1, 1, 1)
+        y_l_l = l.reshape(self.batch_size, 1, 1, 1)
+
+        X1 = X_train[batch_ids[:self.batch_size]]
+        X2 = X_train[batch_ids[self.batch_size:]]
+        
+        for j in range(X1.shape[0]):
+            # spectrum augment
+            for c in range(X1.shape[3]):
+                X1[j, :, :, c] = frequency_masking(X1[j, :, :, c])
+                X1[j, :, :, c] = time_masking(X1[j, :, :, c])
+                X2[j, :, :, c] = frequency_masking(X2[j, :, :, c])
+                X2[j, :, :, c] = time_masking(X2[j, :, :, c])
+
+        # mixup
+        X = X1 * X_l + X2 * (1.0 - X_l)
+
+        if isinstance(y_train, list):
+            y = []
+
+            for y_train_ in y_train:
+                y1 = y_train_[batch_ids[:self.batch_size]]
+                y2 = y_train_[batch_ids[self.batch_size:]]
+                y.append(y1 * y_l + y2 * (1.0 - y_l))
+        else:
+            y1 = y_train[batch_ids[:self.batch_size]]
+            y2 = y_train[batch_ids[self.batch_size:]]
+            y = y1 * y_l + y2 * (1.0 - y_l)
+        
+        if isinstance(y_train_soft, list):
+            y_s = []
+
+            for y_train_soft_ in y_train_soft:
+                y_s1 = y_train_soft_[batch_ids[:self.batch_size]]
+                y_s2 = y_train_soft_[batch_ids[self.batch_size:]]
+                y_s.append(y_s1 * y_l + y_s2 * (1.0 - y_l))
+        else:
+            y_s1 = y_train_soft[batch_ids[:self.batch_size]]
+            y_s2 = y_train_soft[batch_ids[self.batch_size:]]
+            y_s = y_s1 * y_l + y_s2 * (1.0 - y_l)
+
+        if isinstance(y_train_mu, list):
+            y_m = []
+
+            for y_train_mu_ in y_train_mu:
+                y_m1 = y_train_mu_[batch_ids[:self.batch_size]]
+                y_m2 = y_train_mu_[batch_ids[self.batch_size:]]
+                y_m.append(y_m1 * y_m_l + y_m2 * (1.0 - y_m_l))
+        else:
+            y_m1 = y_train_mu[batch_ids[:self.batch_size]]
+            y_m2 = y_train_mu[batch_ids[self.batch_size:]]
+            y_m = y_m1 * y_m_l + y_m2 * (1.0 - y_m_l)
+
+        if isinstance(y_train_logsigma, list):
+            y_l = []
+
+            for y_train_logsigma_ in y_train_logsigma:
+                y_l1 = y_train_logsigma_[batch_ids[:self.batch_size]]
+                y_l2 = y_train_logsigma_[batch_ids[self.batch_size:]]
+                y_l_ = 0.5 * np.log(np.square(y_l_l) * np.exp(2 * y_l1) \
+                    + np.square(1.0 - y_l_l) * np.exp(2 * y_l2))
+                y_l.append(y_l_)
+        else:
+            y_l1 = y_train_logsigma[batch_ids[:self.batch_size]]
+            y_l2 = y_train_logsigma[batch_ids[self.batch_size:]]
+            y_l = y_l1 * y_l_l + y_l2 * (1.0 - y_l_l)
+            y_l = 0.5 * np.log(np.square(y_l_l) * np.exp(2 * y_l1) \
+                + np.square(1.0 - y_l_l) * np.exp(2 * y_l2))
+
+        return X, y, y_s, y_m, y_l

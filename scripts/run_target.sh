@@ -63,9 +63,11 @@ do
 
 # nst
 #python train_target.py --trans_way rkd --model resnet --lmd 0.1 --soft_ratio 0.9 --temperature 1.0 --alpha 25.0 --beta 50.0 --latent_layer activation_33 --source_model ../ASC_Adaptation/exp_2020_resnet_baseline_source//model-62-0.7909.hdf5 --device ${device}
-python train_target.py --trans_way rkd --model fcnn --lmd 0.1 --soft_ratio 0.9 --temperature 1.0 --alpha 25.0 --beta 50.0 --latent_layer activation_8 --source_model ../ASC_Adaptation/exp_2020_fcnn_baseline_source//model-62-0.7939.hdf5 --device ${device}
+#python train_target.py --trans_way rkd --model fcnn --lmd 0.1 --soft_ratio 0.9 --temperature 1.0 --alpha 25.0 --beta 50.0 --latent_layer activation_8 --source_model ../ASC_Adaptation/exp_2020_fcnn_baseline_source//model-62-0.7939.hdf5 --device ${device}
 
-
+# vbkt
+#python train_target.py --trans_way vbkt --model resnet --lmd 0.1 --soft_ratio 0.9 --temperature 1.0 --alpha 1.0 --sigma 0.2 --latent_layer batch_normalization_35 --source_model ../ASC_Adaptation/exp_2020_resnet_baseline_source//model-62-0.7909.hdf5 --device ${device}
+python train_target.py --trans_way vbkt --model fcnn --lmd 0.1 --soft_ratio 0.9 --temperature 1.0 --alpha 1.0 --sigma 0.2 --latent_layer batch_normalization_9 --source_model ../ASC_Adaptation/exp_2020_fcnn_baseline_source//model-62-0.7939.hdf5 --device ${device}
 
 
 done
