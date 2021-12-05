@@ -1,15 +1,14 @@
 # Knowledge Transfer for Acoustic Scene Classification
 
 ## Introduction 
-This repo includes codes for (1) Our proposed Variational Bayesian Knowledge transfer (VBKT) algorithm, and (2) The implemetation of 13 recent cut-edging knowledge transfer (knowledge distillation / teacher-student learning) methods, including TSL, NLE, Fitnets, AT, AB, VID, FSP, COFD, SP, CCKD, PKT, NST, and RKD. More details can be referred to as in our paper [arxiv](https://arxiv.org/abs/2110.08598).
+This repo includes codes for (1) Our proposed Variational Bayesian Knowledge transfer (VBKT) algorithm, and (2) The implemetation of 13 recent cut-edging knowledge transfer (knowledge distillation / teacher-student learning) methods, including TSL, NLE, Fitnets, AT, AB, VID, FSP, COFD, SP, CCKD, PKT, NST, and RKD. More details can be referred to as in our paper [Arxiv](https://arxiv.org/abs/2110.08598).
 
-<img src="https://github.com/MihawkHu/ASC_Knowledge_Transfer/tree/main/fig/VBKT.png" width="500">  
-
+<img src="https://github.com/MihawkHu/ASC_Knowledge_Transfer/blob/main/fig/VBKT.png" width="85%" height="85%">
 
 ## How to use   
 
 ### Environment Setup   
-Tensorflow 1.14 and Keras 2.1. (via `pip install` or `conda install`)  
+Tensorflow 1.14 and Keras 2.1. (via `pip install` or `conda install`).
 
 Noted - We use linux-ppc64le but it should be fine on other platforms follow the suggested version.    
 > \$ conda env create -f environment.yml  
