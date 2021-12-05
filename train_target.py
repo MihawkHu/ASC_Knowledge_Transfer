@@ -363,7 +363,7 @@ history = model.fit_generator(train_data_generator,
                               steps_per_epoch=np.ceil(sample_num/batch_size)
                               ) 
 if trans_way != 'vbkt':
-    model.save(experiments + "/model-epoch" + str(num_epochs) + "-seed" + str(seed) + ".hdf5")
+    model.save(experiments + "/model-epoch" + str(num_epochs) + "-seed" + str(opt.seed) + ".hdf5")
 if trans_way == 'vbkt':
     # save model parameter into model without sampling layer, for testing in no-sampling case
     # due to we import extra input parameters by lambda layer, keras can not directly load the model
@@ -372,7 +372,7 @@ if trans_way == 'vbkt':
         if layer.name != 'activation_11' and layer.name != 'activation_34':
             weights = model.get_layer(layer.name).get_weights()
             model_nosampling.get_layer(layer.name).set_weights(weights)
-    model_nosampling.save(experiments + "/model-epoch" + str(num_epochs) + "-seed" + str(seed)+ ".hdf5")
+    model_nosampling.save(experiments + "/model-epoch" + str(num_epochs) + "-seed" + str(opt.seed)+ ".hdf5")
 
 
 
