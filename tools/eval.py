@@ -11,17 +11,23 @@ import keras
 import tensorflow as tf
 
 import sys
-sys.path.append("../utils/")
+sys.path.append("./utils/")
+import argparse
 from utils import *
-from funcs import *
 
 
-feat_path = '../features/logmel128_scaled_d_dd/'
+parser = argparse.ArgumentParser('argument for training')
+parser.add_argument('--feat_path', type=str, default='../ASC_Adaptation/features/logmel128_scaled_d_dd/', help='path to acoustic features')
+parser.add_argument('--device', type=str, default='b', help='target device')
+parser.add_argument('--model_path', type=str, default='pretrained_models/model_resnet_vbkt_device-b.hdf5', help='path to well-trained model')
+opt = parser.parse_args()
+print(opt)
 
 
-device = 'b'
-model_path = 'exp/model.hdf5'
-csv_file = 'evaluation_setup/fold1_evaluate_' + device + '.csv'
+feat_path = opt.feat_path
+device = opt.device
+model_path = opt.model_path
+csv_file = 'tools/evaluation_setup/fold1_evaluate_' + device + '.csv'
 
 
 num_freq_bin = 128
