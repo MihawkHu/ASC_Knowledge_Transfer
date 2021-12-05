@@ -16,20 +16,19 @@ from keras.optimizers import Adam
 from scipy.special import softmax
 
 import sys
-sys.path.append("..")
+sys.path.append("./utils/")
 import argparse
-from utils.utils import *
-from utils.funcs import *
+from utils import *
 
 #from models.resnet import model_resnet
 #from models.fcnn_att import model_fcnn
 
 parser = argparse.ArgumentParser('argument for training')
 parser.add_argument('--model', type=str, default='resnet')
-parser.add_argument('--feat_path', type=str, default='../../ASC_Adaptation/features/logmel128_scaled_d_dd/')
-parser.add_argument('--train_csv', type=str, default='../evaluation/evaluation_setup/fold1_train_a.csv')
-parser.add_argument('--source_model', type=str, default="../../ASC_Adaptation/exp_2020_resnet_baseline_source//model-62-0.7909.hdf5")
-parser.add_argument('--nle_path', type=str, default='nle.txt')
+parser.add_argument('--feat_path', type=str, default='../ASC_Adaptation/features/logmel128_scaled_d_dd/')
+parser.add_argument('--train_csv', type=str, default='./tools/evaluation_setup/fold1_train_a.csv')
+parser.add_argument('--source_model', type=str, default="../ASC_Adaptation/exp_2020_resnet_baseline_source//model-62-0.7909.hdf5")
+parser.add_argument('--nle_path', type=str, default='tools/nle.txt')
 parser.add_argument('--epochs', type=int, default=10)
 opt = parser.parse_args()
 print(opt)

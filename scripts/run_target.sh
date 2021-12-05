@@ -12,8 +12,11 @@ python train_target.py --trans_way tsl --model fcnn --lmd 0.0 --soft_ratio 1.0 -
 
 
 # nle
-python train_target.py --trans_way nle --model resnet --lmd 0.1 --soft_ratio 0.9 --temperature 1.0 --nle_path tools/nle.txt --source_model ../ASC_Adaptation/exp_2020_resnet_baseline_source//model-62-0.7909.hdf5 --device ${device}
-python train_target.py --trans_way nle --model fcnn --lmd 0.1 --soft_ratio 0.9 --temperature 1.0 --nle_path tools/nle.txt --source_model ../ASC_Adaptation/exp_2020_fcnn_baseline_source//model-62-0.7939.hdf5 --device ${device}
+# generate label embedding at first
+python tools/gen_nle.py --source_model ../ASC_Adaptation/exp_2020_resnet_baseline_source//model-62-0.7909.hdf5 --nle_path tools/nle_resnet.txt
+python tools/gen_nle.py --source_model ../ASC_Adaptation/exp_2020_fcnn_baseline_source//model-62-0.7939.hdf5 --nle_path tools/nle_fcnn.txt
+python train_target.py --trans_way nle --model resnet --lmd 0.1 --soft_ratio 0.9 --temperature 1.0 --nle_path tools/nle_resnet.txt --source_model ../ASC_Adaptation/exp_2020_resnet_baseline_source//model-62-0.7909.hdf5 --device ${device}
+python train_target.py --trans_way nle --model fcnn --lmd 0.1 --soft_ratio 0.9 --temperature 1.0 --nle_path tools/nle_fcnn.txt --source_model ../ASC_Adaptation/exp_2020_fcnn_baseline_source//model-62-0.7939.hdf5 --device ${device}
 
 
 # fitnets
