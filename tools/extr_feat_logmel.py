@@ -9,9 +9,9 @@ from multiprocessing import Pool
 
 
 file_path = '../data/'
-csv_file = '../evaluation/evaluation_setup/fold1_train.csv'
-#csv_file = '../evaluation/evaluation_setup/fold1_evaluate.csv'
-output_path = '../features/logmel128_scaled_d_dd/'
+csv_file = './tools/evaluation_setup/fold1_train.csv'
+#csv_file = './tools/evaluation_setup/fold1_evaluate.csv'
+output_path = '../ASC_Adaptation/features/logmel128_scaled_d_dd/'
 feature_type = 'logmel'
 
 sr = 44100
