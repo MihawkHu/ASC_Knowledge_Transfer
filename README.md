@@ -1,5 +1,8 @@
 # Knowledge Transfer for Acoustic Scene Classification
 
+- **NEW** Our paper is accepted to IEEE International Conference on Acoustics, Speech, & Signal Processing ([ICASSP 2022](https://2022.ieeeicassp.org/)). We would like to thank the reviewers and committee members in the Speech Processing and Quantum Signals community. 
+
+
 ## Introduction 
 This repo includes codes for (1) Our proposed Variational Bayesian Knowledge transfer (VBKT) algorithm, and (2) The implemetation of 13 recent cut-edging knowledge transfer (knowledge distillation / teacher-student learning) methods, including TSL, NLE, Fitnets, AT, AB, VID, FSP, COFD, SP, CCKD, PKT, NST, and RKD. More details can be referred to as in our paper [Arxiv](https://arxiv.org/abs/2110.08598).
 
