@@ -1,6 +1,6 @@
 # Knowledge Transfer for Acoustic Scene Classification
 
-- **NEW** Our paper is accepted to IEEE International Conference on Acoustics, Speech, & Signal Processing ([ICASSP 2022](https://2022.ieeeicassp.org/)). We would like to thank the reviewers and committee members in the Speech Processing and Quantum Signals community. 
+- **NEW** Our paper is accepted to IEEE International Conference on Acoustics, Speech, & Signal Processing ([ICASSP 2022](https://2022.ieeeicassp.org/)). We would like to thank the reviewers and committee members in the audio and speech processing community. 
 
 
 ## Introduction 
