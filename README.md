@@ -43,11 +43,13 @@ Use `./tools/eval.py` to evaluate a well-trained model on a target device. Examp
 If you find this work useful, please consider to cite our paper. Thank you! Feel free to contact us for any quesitons or collaborations.  
 
 ```bib  
-@article{hu2021variational,  
-    title={A Variational Bayesian Approach to Learning Latent Variables for Acoustic Knowledge Transfer},   
-    author={Hu, Hu and Siniscalchi, Sabato Marco and Yang, Chao-Han Huck and Lee, Chin-Hui},   
-    journal={arXiv preprint arXiv:2110.08598},   
-    year={2021},  
+@inproceedings{hu2022variational,
+  title={A Variational Bayesian Approach to Learning Latent Variables for Acoustic Knowledge Transfer},
+  author={Hu, Hu and Siniscalchi, Sabato Marco and Yang, Chao-Han Huck and Lee, Chin-Hui},
+  booktitle={IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+  pages={4041--4045},
+  year={2022},
+  organization={IEEE}
 }
 ```
 
